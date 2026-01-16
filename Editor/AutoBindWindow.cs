@@ -7,17 +7,17 @@ using System.Text;
 namespace CUiAutoBind
 {
     /// <summary>
-    /// CUiAutoBind 主编辑器窗口
+    /// CUIBind 主编辑器窗口
     /// </summary>
     public class AutoBindWindow : EditorWindow
     {
         private static BindConfig config;
         private Vector2 scrollPosition;
 
-        [MenuItem("Tools/CUiAutoBind/打开窗口", false, 10)]
+        [MenuItem("Tools/CUIBind/打开窗口", false, 10)]
         public static void ShowWindow()
         {
-            GetWindow<AutoBindWindow>("CUiAutoBind");
+            GetWindow<AutoBindWindow>("CUIBind");
         }
 
         private void OnGUI()
@@ -29,7 +29,7 @@ namespace CUiAutoBind
             }
 
             // 标题
-            GUILayout.Label("CUiAutoBind - UI 自动绑定系统", EditorStyles.boldLabel);
+            GUILayout.Label("CUIBind - UI 自动绑定系统", EditorStyles.boldLabel);
             EditorGUILayout.Space();
 
             // 配置部分
@@ -218,14 +218,6 @@ namespace CUiAutoBind
             {
                 BatchAutoBindByNamingConvention(autoBinds);
             }
-        }
-
-        /// <summary>
-        /// 加载配置
-        /// </summary>
-        private BindConfig LoadConfig()
-        {
-            return ConfigManager.LoadConfig();
         }
 
         /// <summary>
@@ -453,118 +445,7 @@ namespace CUiAutoBind
         /// </summary>
         private void AutoBindByNamingConventionRecursive(Transform current, AutoBind parentAutoBind, BindConfig config, ref int addedCount, ref int skippedCount, ref int notFoundCount)
         {
-            // 跳过父对象自身
-            if (current == parentAutoBind.transform)
-            {
-                // 只遍历直接子对象
-                foreach (Transform child in current)
-                {
-                    AutoBindByNamingConventionRecursive(child, parentAutoBind, config, ref addedCount, ref skippedCount, ref notFoundCount);
-                }
-                return;
-            }
-
-            // 检查是否有AutoBind组件（如果有，说明这个对象由自己管理，跳过）
-            if (current.GetComponent<AutoBind>() != null)
-                return;
-
-            // 检查是否匹配命名约定
-            SuffixConfig matchedSuffix = null;
-            foreach (var suffixConfig in config.suffixConfigs)
-            {
-                if (current.name.EndsWith(suffixConfig.suffix, System.StringComparison.OrdinalIgnoreCase))
-                {
-                    matchedSuffix = suffixConfig;
-                    break;
-                }
-            }
-
-            // 如果匹配到命名规则，尝试绑定
-            if (matchedSuffix != null)
-            {
-                // 尝试获取组件类型
-                System.Type componentType = GetComponentType(matchedSuffix);
-                if (componentType != null)
-                {
-                    Component component = current.GetComponent(componentType);
-
-                    if (component != null)
-                    {
-                        // 生成字段名（将后缀转换为驼峰命名）
-                        string fieldName = ConvertToFieldName(current.name, matchedSuffix.suffix);
-
-                        // 检查是否已经绑定
-                        bool exists = parentAutoBind.bindings.Exists(b => b.component == component);
-                        if (!exists)
-                        {
-                            parentAutoBind.AddBinding(component, fieldName);
-                            addedCount++;
-                        }
-                        else
-                        {
-                            skippedCount++;
-                        }
-                    }
-                    else
-                    {
-                        notFoundCount++;
-                    }
-                }
-            }
-
-            // 递归处理子对象
-            foreach (Transform child in current)
-            {
-                AutoBindByNamingConventionRecursive(child, parentAutoBind, config, ref addedCount, ref skippedCount, ref notFoundCount);
-            }
-        }
-
-        /// <summary>
-        /// 根据后缀配置获取组件类型
-        /// </summary>
-        private System.Type GetComponentType(SuffixConfig suffixConfig)
-        {
-            if (suffixConfig.componentType == null || string.IsNullOrEmpty(suffixConfig.componentType.FullTypeName))
-                return null;
-
-            // 尝试从已加载的程序集中查找类型
-            foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
-            {
-                try
-                {
-                    // 使用完整的类型名
-                    System.Type type = assembly.GetType(suffixConfig.componentType.FullTypeName, false, true);
-                    if (type != null)
-                        return type;
-                }
-                catch
-                {
-                    continue;
-                }
-            }
-
-            return null;
-        }
-
-        /// <summary>
-        /// 将对象名称转换为字段名（移除后缀，首字母小写）
-        /// </summary>
-        private string ConvertToFieldName(string objectName, string suffix)
-        {
-            // 移除后缀（不区分大小写）
-            string fieldName = objectName;
-            if (objectName.EndsWith(suffix, System.StringComparison.OrdinalIgnoreCase))
-            {
-                fieldName = objectName.Substring(0, objectName.Length - suffix.Length);
-            }
-
-            // 首字母小写（驼峰命名）
-            if (fieldName.Length > 0)
-            {
-                fieldName = char.ToLower(fieldName[0]) + fieldName.Substring(1);
-            }
-
-            return fieldName;
+            AutoBindUtility.AutoBindByNamingConventionRecursive(current, parentAutoBind, config, ref addedCount, ref skippedCount, ref notFoundCount);
         }
     }
 }

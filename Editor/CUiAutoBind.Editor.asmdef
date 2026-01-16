@@ -1,7 +1,7 @@
 {
-  "name": "CUiAutoBind.Editor",
+  "name": "CUIBind.Editor",
   "references": [
-    "CUiAutoBind.Runtime",
+    "CUIBind.Runtime",
     "UnityEngine.UI"
   ],
   "includePlatforms": [

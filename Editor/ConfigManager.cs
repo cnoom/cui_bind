@@ -9,8 +9,8 @@ namespace CUiAutoBind
     /// </summary>
     public static class ConfigManager
     {
-        private const string CONFIG_ASSET_PATH = "Assets/CUiAutoBind/Resources/AutoBindConfig.asset";
-        private const string CONFIG_FOLDER_PATH = "Assets/CUiAutoBind/Resources";
+        private const string CONFIG_ASSET_PATH = "Assets/CUIBind/Resources/AutoBindConfig.asset";
+        private const string CONFIG_FOLDER_PATH = "Assets/CUIBind/Resources";
 
         /// <summary>
         /// 加载配置（不创建）

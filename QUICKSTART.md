@@ -129,7 +129,7 @@ MainMenu (AutoBind组件)
 
 ### 批量绑定多个UI
 
-1. 打开菜单：`Tools/CUiAutoBind/打开窗口`
+1. 打开菜单：`Tools/CUIBind/打开窗口`
 
 2. 点击 **"批量按命名约定自动绑定"**
    ```
@@ -149,7 +149,7 @@ MainMenu (AutoBind组件)
 
 ### 添加自定义后缀规则
 
-1. 打开 `Tools/CUiAutoBind/打开窗口`
+1. 打开 `Tools/CUIBind/打开窗口`
 2. 找到 `Suffix Configs` 配置
 3. 添加新规则：
    - **Suffix**: 后缀名（如 `custom`）

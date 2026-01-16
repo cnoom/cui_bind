@@ -113,7 +113,7 @@ MainMenu (AutoBind组件)
 
 ### 配置自定义规则
 
-打开 `Tools/CUiAutoBind/打开窗口`，在配置中添加：
+打开 `Tools/CUIBind/打开窗口`，在配置中添加：
 
 ```csharp
 // 添加自定义后缀规则
@@ -231,7 +231,7 @@ InventoryPanel (AutoBind组件)
 ### 批量绑定
 
 1. **打开主窗口**
-   - 菜单: `Tools/CUiAutoBind/打开窗口`
+   - 菜单: `Tools/CUIBind/打开窗口`
 
 2. **点击"批量按命名约定自动绑定"**
    - 系统会遍历场景中所有 AutoBind 组件
@@ -384,7 +384,7 @@ private ProgressBar loading;
 ### Q4: 如何添加自定义组件的命名规则？
 
 **A:**
-1. 打开 `Tools/CUiAutoBind/打开窗口`
+1. 打开 `Tools/CUIBind/打开窗口`
 2. 在配置的 `Suffix Configs` 数组中添加新规则
 3. 填写：Suffix（后缀）、Component Type（组件类型）、Namespace（命名空间）
 4. 保存配置

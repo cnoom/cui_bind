@@ -1,5 +1,5 @@
 {
-  "name": "com.cui.autobind",
+  "name": "com.cframework.cuibind",
   "version": "1.0.0",
   "displayName": "CUiAutoBind",
   "description": "Unity UI 自动绑定系统 - 一款高效的 UI 开发工具，通过自动生成代码来简化 UI 组件的绑定与管理",

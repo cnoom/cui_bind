@@ -1,5 +1,5 @@
 {
-  "name": "CUiAutoBind.Runtime",
+  "name": "CUIBind.Runtime",
   "references": [
     "UnityEngine.UI"
   ],
