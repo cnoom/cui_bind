@@ -31,6 +31,11 @@ namespace CUiAutoBind
         public string excludedPrefixes = "";
 
         /// <summary>
+        /// 是否显示UI绑定列表
+        /// </summary>
+        public bool showBindingList = true;
+
+        /// <summary>
         /// 添加绑定数据
         /// </summary>
         public void AddBinding(Component component, string fieldName)

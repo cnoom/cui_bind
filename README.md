@@ -5,11 +5,12 @@ Unity UI 自动绑定系统 - 一款高效的 UI 开发工具，通过自动生�
 ## 功能特性
 
 - ✅ **自动生成 UI 绑定代码** - 避免手动编写重复的绑定代码
+- ✅ **命名约定自动绑定** - 🆕 通过后缀命名规则一键自动绑定所有子对象
 - ✅ **双文件生成模式** - 使用 partial class 分离自动生成和手动编写的代码
 - ✅ **智能增量更新** - 重新生成自动文件时完全不影响手动文件
-- ✅ **嵌套生成支持** - 支持递归生成子对象 UI 的代码
+- ✅ **嵌套生成支持** - 支持递归生成子对象 UI 的代码，自动避免重复绑定
 - ✅ **编辑器时自动赋值** - 生成代码时自动将组件赋值到字段，无需运行时查找
-- ✅ **灵活的配置系统** - 通过 ScriptableObject 配置生成参数
+- ✅ **灵活的配置系统** - 通过 ScriptableObject 配置生成参数和命名规则
 - ✅ **支持父类和接口** - 生成的类可以继承指定基类并实现接口
 - ✅ **组件类型支持** - 支持所有 Unity 内置组件和用户自定义组件
 - ✅ **自动命名空间导入** - 根据绑定组件类型自动添加 using 语句
@@ -66,6 +67,81 @@ Unity UI 自动绑定系统 - 一款高效的 UI 开发工具，通过自动生�
 
 - **添加新绑定**：点击"添加新绑定"按钮，然后手动选择组件和填写字段名
 - **自动添加组件**：点击"从当前 GameObject 添加组件"按钮，系统会自动扫描并添加所有可用组件
+- **按命名约定自动绑定**：🆕 点击"按命名约定自动绑定"按钮，系统会根据配置的命名规则自动扫描并绑定所有子对象
+
+### 🆕 命名约定自动绑定（推荐）
+
+命名约定自动绑定是最快捷的绑定方式，通过后缀命名规则自动识别并绑定组件。
+
+#### 工作原理
+
+1. 在 `AutoBindConfig` 中配置后缀规则（如 `btn` → Button, `txt` → Text）
+2. 给 GameObject 命名时使用对应后缀（如 `btn_Start`, `txt_Title`, `img_Bg`）
+3. 点击"按命名约定自动绑定"按钮
+4. 系统自动扫描所有子对象，匹配命名规则并添加绑定
+5. 自动将后缀转换为驼峰命名字段名（如 `btn_Start` → `startButton`）
+
+#### 默认后缀规则
+
+系统已预置以下常用后缀规则：
+
+| 后缀 | 组件类型 | 命名空间 |
+|------|---------|---------|
+| btn | Button | UnityEngine.UI |
+| txt | Text | UnityEngine.UI |
+| img | Image | UnityEngine.UI |
+| tgl | Toggle | UnityEngine.UI |
+| slr | Slider | UnityEngine.UI |
+| inp | InputField | UnityEngine.UI |
+| scr | ScrollRect | UnityEngine.UI |
+| grid | GridLayoutGroup | UnityEngine.UI |
+
+#### 使用示例
+
+```
+场景结构：
+MainMenu (AutoBind组件)
+├── btn_Start (Button组件)     → 绑定为: startButton
+├── btn_Settings (Button组件)  → 绑定为: settingsButton
+├── txt_Title (Text组件)       → 绑定为: titleText
+├── txt_Volume (Text组件)      → 绑定为: volumeText
+├── img_Bg (Image组件)         → 绑定为: backgroundImage
+└── SettingsPanel (AutoBind组件)  ← 有自己的AutoBind，不会被父对象绑定
+    ├── btn_Close (Button组件)  → SettingsPanel自己绑定: closeButton
+    └── slr_Volume (Slider组件) → SettingsPanel自己绑定: volumeSlider
+```
+
+**步骤：**
+1. 在根对象 `MainMenu` 上添加 AutoBind 组件
+2. 点击"按命名约定自动绑定"按钮
+3. 系统自动扫描并绑定所有子对象（除了有自己AutoBind组件的SettingsPanel）
+4. 点击"生成绑定代码"
+
+#### 配置自定义后缀规则
+
+在 `AutoBindConfig` 中可以添加或修改后缀规则：
+
+1. 打开 `Tools/CUiAutoBind/打开窗口`
+2. 在配置中找到 `Suffix Configs` 数组
+3. 添加新规则或修改现有规则：
+   - **Suffix**: 后缀名（如 "btn"）
+   - **Component Type**: 组件类型（如 "Button"）
+   - **Namespace**: 命名空间（如 "UnityEngine.UI"）
+
+#### 嵌套绑定规则
+
+- ✅ 父对象会自动跳过有自己AutoBind组件的子对象（避免重复绑定）
+- ✅ 支持配置排除前缀（如 "_Background", "TMP_"）
+- ✅ 递归扫描所有子对象，深度不限
+- ✅ 绑定时会检查组件是否存在，未找到会给出警告
+
+#### 优势
+
+- ⚡ **超快速**：一键绑定所有子对象，无需逐个手动添加
+- 🎯 **零配置**：使用默认规则即可，开箱即用
+- 🛡️ **安全**：自动跳过已绑定的组件，避免重复
+- 🔧 **灵活**：支持自定义后缀规则和排除前缀
+- 📦 **智能**：自动将后缀转换为驼峰命名，符合代码规范
 
 ### 4. 生成代码
 
@@ -93,6 +169,26 @@ Unity UI 自动绑定系统 - 一款高效的 UI 开发工具，通过自动生�
 | Use Partial Class | 是否使用 partial class 生成双文件 | true |
 | Add Field Comments | 是否在字段上添加注释 | true |
 | Additional Namespaces | 额外的命名空间引用 | 空 |
+| Suffix Configs | 🆕 命名约定规则配置（后缀 → 类型映射） | 8个默认规则 |
+| Check Component Exists | 🆕 自动绑定时是否检查组件存在性 | true |
+
+### 🆕 命名约定配置说明
+
+Suffix Configs 是一个数组，每个元素定义一个命名规则：
+
+```csharp
+{
+    "suffix": "btn",              // 后缀名（不区分大小写）
+    "componentType": "Button",    // 组件类型名
+    "namespaceName": "UnityEngine.UI"  // 命名空间
+}
+```
+
+**示例配置：**
+- `btn` → `Button` (UnityEngine.UI)
+- `txt` → `Text` (UnityEngine.UI)
+- `img` → `Image` (UnityEngine.UI)
+- `custom` → `MyCustomComponent` (YourNamespace) - 支持自定义组件
 
 ### 父类和接口配置
 

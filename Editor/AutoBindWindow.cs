@@ -59,8 +59,12 @@ namespace CUiAutoBind
                 EditorGUILayout.PropertyField(serializedConfig.FindProperty("baseClass"), new GUIContent("基类"));
                 EditorGUILayout.PropertyField(serializedConfig.FindProperty("interfaces"), new GUIContent("接口"));
                 EditorGUILayout.PropertyField(serializedConfig.FindProperty("usePartialClass"), new GUIContent("使用 Partial 类"));
-                EditorGUILayout.PropertyField(serializedConfig.FindProperty("addFieldComments"), new GUIContent("添加字段注释"));
                 EditorGUILayout.PropertyField(serializedConfig.FindProperty("additionalNamespaces"), new GUIContent("额外命名空间"));
+
+                EditorGUILayout.Space();
+
+                // 绘制后缀配置
+                DrawSuffixConfigs(serializedConfig);
 
                 EditorGUILayout.Space();
 
@@ -90,6 +94,58 @@ namespace CUiAutoBind
                 {
                     config = ConfigManager.CreateDefaultConfig();
                 }
+            }
+        }
+
+        /// <summary>
+        /// 绘制后缀配置部分
+        /// </summary>
+        private void DrawSuffixConfigs(SerializedObject serializedConfig)
+        {
+            EditorGUILayout.LabelField("后缀命名规则", EditorStyles.boldLabel);
+
+            SerializedProperty suffixConfigsProp = serializedConfig.FindProperty("suffixConfigs");
+
+            // 显示配置数量
+            EditorGUILayout.HelpBox($"当前配置了 {suffixConfigsProp.arraySize} 个后缀规则", MessageType.Info);
+
+            EditorGUILayout.Space();
+
+            // 使用滚动视图显示列表
+            scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition, GUILayout.Height(200));
+
+            for (int i = 0; i < suffixConfigsProp.arraySize; i++)
+            {
+                SerializedProperty elementProp = suffixConfigsProp.GetArrayElementAtIndex(i);
+
+                EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
+                // 使用自定义的 SuffixConfigDrawer 绘制每个元素
+                EditorGUILayout.PropertyField(elementProp, new GUIContent($"规则 {i + 1}"), true);
+
+                // 删除按钮
+                if (GUILayout.Button("删除此规则", GUILayout.Height(20)))
+                {
+                    if (EditorUtility.DisplayDialog("确认删除", $"确定要删除规则 '{i + 1}' 吗？", "确定", "取消"))
+                    {
+                        suffixConfigsProp.DeleteArrayElementAtIndex(i);
+                        break;
+                    }
+                }
+
+                EditorGUILayout.EndVertical();
+                EditorGUILayout.Space(4);
+            }
+
+            EditorGUILayout.EndScrollView();
+
+            // 添加新规则按钮
+            if (GUILayout.Button("添加后缀规则", GUILayout.Height(25)))
+            {
+                suffixConfigsProp.arraySize++;
+                SerializedProperty newElement = suffixConfigsProp.GetArrayElementAtIndex(suffixConfigsProp.arraySize - 1);
+                newElement.FindPropertyRelative("suffix").stringValue = "new";
+                newElement.FindPropertyRelative("componentType").FindPropertyRelative("fullTypeName").stringValue = "UnityEngine.UI.Button";
             }
         }
 
@@ -155,6 +211,12 @@ namespace CUiAutoBind
             if (GUILayout.Button("批量重新绑定", GUILayout.Height(35)))
             {
                 BatchRebind(autoBinds);
+            }
+
+            // 批量按命名约定自动绑定按钮
+            if (GUILayout.Button("批量按命名约定自动绑定", GUILayout.Height(35)))
+            {
+                BatchAutoBindByNamingConvention(autoBinds);
             }
         }
 
@@ -313,6 +375,227 @@ namespace CUiAutoBind
             }
 
             EditorUtility.DisplayDialog(result.failureCount > 0 ? "完成但有错误" : "完成", message.ToString(), "确定");
+        }
+
+        /// <summary>
+        /// 批量按命名约定自动绑定
+        /// </summary>
+        private void BatchAutoBindByNamingConvention(AutoBind[] autoBinds)
+        {
+            if (autoBinds == null || autoBinds.Length == 0)
+            {
+                EditorUtility.DisplayDialog("提示", "没有找到 AutoBind 组件", "确定");
+                return;
+            }
+
+            // 加载配置
+            BindConfig config = ConfigManager.LoadConfig();
+            if (config == null || config.suffixConfigs == null || config.suffixConfigs.Length == 0)
+            {
+                EditorUtility.DisplayDialog("错误", "请先在配置文件中添加命名规则", "确定");
+                return;
+            }
+
+            int totalAdded = 0;
+            int totalSkipped = 0;
+            int totalNotFound = 0;
+
+            // 遍历所有AutoBind组件
+            foreach (var autoBind in autoBinds)
+            {
+                try
+                {
+                    Undo.RecordObject(autoBind, "Batch Auto Bind By Naming Convention");
+
+                    // 获取排除前缀
+                    string[] excludedPrefixes = GetExcludedPrefixes(autoBind);
+
+                    // 执行自动绑定
+                    int addedCount = 0;
+                    int skippedCount = 0;
+                    int notFoundCount = 0;
+
+                    AutoBindByNamingConventionRecursive(autoBind.transform, autoBind, config, excludedPrefixes, ref addedCount, ref skippedCount, ref notFoundCount);
+
+                    if (addedCount > 0 || skippedCount > 0 || notFoundCount > 0)
+                    {
+                        EditorUtility.SetDirty(autoBind);
+                    }
+
+                    totalAdded += addedCount;
+                    totalSkipped += skippedCount;
+                    totalNotFound += notFoundCount;
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogError($"批量绑定失败: {autoBind.gameObject.name} - {e.Message}");
+                }
+            }
+
+            // 保存更改
+            AssetDatabase.SaveAssets();
+
+            // 显示结果
+            StringBuilder message = new StringBuilder();
+            message.AppendLine($"批量自动绑定完成！");
+            message.AppendLine();
+            message.AppendLine($"总计:");
+            message.AppendLine($"  ✓ 新增绑定: {totalAdded}");
+            message.AppendLine($"  ○ 已存在（跳过）: {totalSkipped}");
+            if (totalNotFound > 0)
+            {
+                message.AppendLine($"  ✗ 未找到组件: {totalNotFound}");
+            }
+            message.AppendLine($"  处理对象数: {autoBinds.Length}");
+
+            EditorUtility.DisplayDialog("完成", message.ToString(), "确定");
+        }
+
+        /// <summary>
+        /// 递归按命名约定自动绑定
+        /// </summary>
+        private void AutoBindByNamingConventionRecursive(Transform current, AutoBind parentAutoBind, BindConfig config, string[] excludedPrefixes, ref int addedCount, ref int skippedCount, ref int notFoundCount)
+        {
+            // 跳过父对象自身
+            if (current == parentAutoBind.transform)
+            {
+                // 只遍历直接子对象
+                foreach (Transform child in current)
+                {
+                    AutoBindByNamingConventionRecursive(child, parentAutoBind, config, excludedPrefixes, ref addedCount, ref skippedCount, ref notFoundCount);
+                }
+                return;
+            }
+
+            // 检查排除前缀
+            if (IsExcluded(current.name, excludedPrefixes))
+                return;
+
+            // 检查是否有AutoBind组件（如果有，说明这个对象由自己管理，跳过）
+            if (current.GetComponent<AutoBind>() != null)
+                return;
+
+            // 检查是否匹配命名约定
+            SuffixConfig matchedSuffix = null;
+            foreach (var suffixConfig in config.suffixConfigs)
+            {
+                if (current.name.EndsWith(suffixConfig.suffix, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    matchedSuffix = suffixConfig;
+                    break;
+                }
+            }
+
+            // 如果匹配到命名规则，尝试绑定
+            if (matchedSuffix != null)
+            {
+                // 尝试获取组件类型
+                System.Type componentType = GetComponentType(matchedSuffix);
+                if (componentType != null)
+                {
+                    Component component = current.GetComponent(componentType);
+
+                    if (component != null)
+                    {
+                        // 生成字段名（将后缀转换为驼峰命名）
+                        string fieldName = ConvertToFieldName(current.name, matchedSuffix.suffix);
+
+                        // 检查是否已经绑定
+                        bool exists = parentAutoBind.bindings.Exists(b => b.component == component);
+                        if (!exists)
+                        {
+                            parentAutoBind.AddBinding(component, fieldName);
+                            addedCount++;
+                        }
+                        else
+                        {
+                            skippedCount++;
+                        }
+                    }
+                    else
+                    {
+                        notFoundCount++;
+                    }
+                }
+            }
+
+            // 递归处理子对象
+            foreach (Transform child in current)
+            {
+                AutoBindByNamingConventionRecursive(child, parentAutoBind, config, excludedPrefixes, ref addedCount, ref skippedCount, ref notFoundCount);
+            }
+        }
+
+        /// <summary>
+        /// 根据后缀配置获取组件类型
+        /// </summary>
+        private System.Type GetComponentType(SuffixConfig suffixConfig)
+        {
+            if (suffixConfig.componentType == null || string.IsNullOrEmpty(suffixConfig.componentType.FullTypeName))
+                return null;
+
+            // 尝试从已加载的程序集中查找类型
+            foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+            {
+                try
+                {
+                    // 使用完整的类型名
+                    System.Type type = assembly.GetType(suffixConfig.componentType.FullTypeName, false, true);
+                    if (type != null)
+                        return type;
+                }
+                catch
+                {
+                    continue;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// 将对象名称转换为字段名（移除后缀，首字母小写）
+        /// </summary>
+        private string ConvertToFieldName(string objectName, string suffix)
+        {
+            // 移除后缀（不区分大小写）
+            string fieldName = objectName;
+            if (objectName.EndsWith(suffix, System.StringComparison.OrdinalIgnoreCase))
+            {
+                fieldName = objectName.Substring(0, objectName.Length - suffix.Length);
+            }
+
+            // 首字母小写（驼峰命名）
+            if (fieldName.Length > 0)
+            {
+                fieldName = char.ToLower(fieldName[0]) + fieldName.Substring(1);
+            }
+
+            return fieldName;
+        }
+
+        /// <summary>
+        /// 获取排除前缀数组
+        /// </summary>
+        private string[] GetExcludedPrefixes(AutoBind autoBind)
+        {
+            if (string.IsNullOrEmpty(autoBind.excludedPrefixes))
+                return new string[0];
+
+            return autoBind.excludedPrefixes.Split(new[] { ',' }, System.StringSplitOptions.RemoveEmptyEntries)
+                .Select(p => p.Trim())
+                .ToArray();
+        }
+
+        /// <summary>
+        /// 检查是否被排除
+        /// </summary>
+        private bool IsExcluded(string name, string[] prefixes)
+        {
+            if (prefixes == null || prefixes.Length == 0)
+                return false;
+
+            return prefixes.Any(prefix => name.StartsWith(prefix));
         }
     }
 }
