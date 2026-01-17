@@ -12,7 +12,7 @@ namespace CUiAutoBind
     public class AutoBindEditor : Editor
     {
         private SerializedProperty bindingsProperty;
-        private SerializedProperty autoBindEnabledProperty;
+        private SerializedProperty bindModeProperty;
         private SerializedProperty customClassNameProperty;
         private SerializedProperty showBindingListProperty;
 
@@ -24,7 +24,7 @@ namespace CUiAutoBind
         private void OnEnable()
         {
             bindingsProperty = serializedObject.FindProperty("bindings");
-            autoBindEnabledProperty = serializedObject.FindProperty("autoBindEnabled");
+            bindModeProperty = serializedObject.FindProperty("bindMode");
             customClassNameProperty = serializedObject.FindProperty("customClassName");
             showBindingListProperty = serializedObject.FindProperty("showBindingList");
 
@@ -38,11 +38,13 @@ namespace CUiAutoBind
 
             AutoBind autoBind = (AutoBind)target;
 
-            // 显示基本属性
-            EditorGUILayout.PropertyField(autoBindEnabledProperty);
+            // 显示绑定模式选择
+            EditorGUILayout.LabelField("绑定模式", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(bindModeProperty, new GUIContent("绑定方式", "选择绑定模式"));
+            EditorGUILayout.HelpBox(autoBind.GetBindModeDescription(), MessageType.Info);
 
             EditorGUILayout.Space();
-            
+
             EditorGUI.BeginChangeCheck();
 
             EditorGUILayout.PropertyField(customClassNameProperty, new GUIContent("自定义类名", "留空则使用 GameObject 名称"));
@@ -87,31 +89,18 @@ namespace CUiAutoBind
 
             EditorGUILayout.Space();
 
-            // 添加新绑定按钮
-            if (GUILayout.Button("添加新绑定", GUILayout.Height(30)))
+            // 根据绑定模式显示不同的操作按钮
+            switch (autoBind.bindMode)
             {
-                Undo.RecordObject(autoBind, "Add New Binding");
-                autoBind.AddBinding(null, "NewBinding");
-                EditorUtility.SetDirty(autoBind);
-                serializedObject.Update();
-            }
-
-            // 从 GameObject 自动添加组件按钮
-            if (GUILayout.Button("从当前 GameObject 添加组件", GUILayout.Height(30)))
-            {
-                Undo.RecordObject(autoBind, "Auto Add Components");
-                AutoAddComponents(autoBind);
-                EditorUtility.SetDirty(autoBind);
-                serializedObject.Update();
-            }
-
-            // 按命名约定自动绑定按钮
-            if (GUILayout.Button("按命名约定自动绑定", GUILayout.Height(30)))
-            {
-                Undo.RecordObject(autoBind, "Auto Bind By Naming Convention");
-                AutoBindByNamingConvention(autoBind);
-                EditorUtility.SetDirty(autoBind);
-                serializedObject.Update();
+                case BindMode.Manual:
+                    DrawManualBindingButtons(autoBind);
+                    break;
+                case BindMode.AutoSuffix:
+                    DrawAutoSuffixBindingButtons(autoBind);
+                    break;
+                case BindMode.Hybrid:
+                    DrawHybridBindingButtons(autoBind);
+                    break;
             }
 
             EditorGUILayout.Space();
@@ -319,6 +308,91 @@ namespace CUiAutoBind
 
             Debug.Log(report);
             EditorUtility.DisplayDialog("绑定验证", report, "确定");
+        }
+
+        /// <summary>
+        /// 绘制手动拖拽绑定模式的按钮
+        /// </summary>
+        private void DrawManualBindingButtons(AutoBind autoBind)
+        {
+            EditorGUILayout.LabelField("手动拖拽绑定", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox("完全手动添加绑定，适合精确控制的场景。", MessageType.None);
+
+            // 添加新绑定按钮
+            if (GUILayout.Button("添加新绑定", GUILayout.Height(30)))
+            {
+                Undo.RecordObject(autoBind, "Add New Binding");
+                autoBind.AddBinding(null, "NewBinding");
+                EditorUtility.SetDirty(autoBind);
+                serializedObject.Update();
+            }
+
+            // 从 GameObject 自动添加组件按钮
+            if (GUILayout.Button("从当前 GameObject 添加组件", GUILayout.Height(30)))
+            {
+                Undo.RecordObject(autoBind, "Auto Add Components");
+                AutoAddComponents(autoBind);
+                EditorUtility.SetDirty(autoBind);
+                serializedObject.Update();
+            }
+        }
+
+        /// <summary>
+        /// 绘制后缀自动绑定模式的按钮
+        /// </summary>
+        private void DrawAutoSuffixBindingButtons(AutoBind autoBind)
+        {
+            EditorGUILayout.LabelField("后缀自动绑定", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox("根据命名后缀自动扫描并绑定，适合大量组件的场景。", MessageType.None);
+
+            // 按命名约定自动绑定按钮
+            if (GUILayout.Button("按命名约定自动绑定", GUILayout.Height(30)))
+            {
+                Undo.RecordObject(autoBind, "Auto Bind By Naming Convention");
+                AutoBindByNamingConvention(autoBind);
+                EditorUtility.SetDirty(autoBind);
+                serializedObject.Update();
+            }
+
+            EditorGUILayout.HelpBox("提示：命名约定会递归扫描所有子对象，根据后缀规则自动绑定。可在配置文件中自定义后缀规则。", MessageType.Info);
+        }
+
+        /// <summary>
+        /// 绘制混合绑定模式的按钮
+        /// </summary>
+        private void DrawHybridBindingButtons(AutoBind autoBind)
+        {
+            EditorGUILayout.LabelField("混合绑定", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox("同时支持手动和后缀自动绑定，适合复杂场景。", MessageType.None);
+
+            // 添加新绑定按钮
+            if (GUILayout.Button("添加新绑定", GUILayout.Height(30)))
+            {
+                Undo.RecordObject(autoBind, "Add New Binding");
+                autoBind.AddBinding(null, "NewBinding");
+                EditorUtility.SetDirty(autoBind);
+                serializedObject.Update();
+            }
+
+            // 从 GameObject 自动添加组件按钮
+            if (GUILayout.Button("从当前 GameObject 添加组件", GUILayout.Height(30)))
+            {
+                Undo.RecordObject(autoBind, "Auto Add Components");
+                AutoAddComponents(autoBind);
+                EditorUtility.SetDirty(autoBind);
+                serializedObject.Update();
+            }
+
+            // 按命名约定自动绑定按钮
+            if (GUILayout.Button("按命名约定自动绑定", GUILayout.Height(30)))
+            {
+                Undo.RecordObject(autoBind, "Auto Bind By Naming Convention");
+                AutoBindByNamingConvention(autoBind);
+                EditorUtility.SetDirty(autoBind);
+                serializedObject.Update();
+            }
+
+            EditorGUILayout.HelpBox("提示：可以同时使用手动添加和后缀自动绑定。后缀自动绑定会自动跳过已绑定的组件。", MessageType.Info);
         }
     }
 }
